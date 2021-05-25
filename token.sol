@@ -69,10 +69,10 @@ contract StandardToken is BasicToken {
 
 contract Token is StandardToken {
 
-    string public name = "WeNabis2.0";
+    string public name = "Assisi";
     uint8 public decimals = 8;
-    string public symbol = "WS2";
-    string public version = 'WNS 0.2';
+    string public symbol = "HUMUS";
+    string public version = 'HUMUS 2.0';
     address public mintableAddress;
 
     constructor (address sale_address) public {
