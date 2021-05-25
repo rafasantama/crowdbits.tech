@@ -84,14 +84,14 @@ contract Sale {
     event Contribution(address from, uint256 amount);
     event ReleaseTokens(address from, uint256 amount);
 
-    constructor (address _wallet,string _nombre_socio, string _doc_socio) public {
+    constructor (address _wallet,string _nombre_partner, string _doc_partner) public {
        
         maxMintable = 1000000000000; // 8 million max sellable (18 decimals)
         goal = 523000000000000000000;
         ETHWallet = _wallet;
         isFunding = true;
         creator = msg.sender;
-        address2socio[msg.sender]=true;
+        address2partner[msg.sender]=true;
         adminTokens = 400000000000;
         createHeldCoins();
         actual_stage = 1;
@@ -112,7 +112,7 @@ contract Sale {
         goal3 = (stage3limit - stage2limit) * stage3rate;
         goal4 = goal;
         max_wei_unverified = 1000000000000000000; 
-        socios.push(socio(msg.sender,_nombre_socio,_doc_socio));
+        partners.push(partner(msg.sender,_nombre_partner,_doc_partner));
     }
 
     // setup function to be ran only 1 time
@@ -223,7 +223,7 @@ contract Sale {
 
     function cash_back(address _address_cliente, uint _valor) public returns (uint _stage1amount, uint _stage2amount, uint _stage3amount, uint _stage4amount, uint _amount) {
         require(isFunding, "La campaña ya finalizo");
-        require(address2socio[msg.sender], "Debes ser socio para crear tokens");
+        require(address2partner[msg.sender], "Debes ser partner para crear tokens");
         if (address2IDu[_address_cliente] == 0) {
           
           address2IDu[_address_cliente] = IDu;
@@ -321,23 +321,25 @@ contract Sale {
     }
 
     // function to create held tokens for developer
-    function createHoldToken(uint256 _amount, uint _taskID) public {
-        require(address2socio[msg.sender], "Debes ser socio para crear tokens");
+    function createHoldToken(uint256 _amount, string _taskName) public {
+        require(address2partner[msg.sender], "Debes ser partner para crear tokens");
         require(heldTotal>=_amount, "No hay suficientes tokens disponibles");
-        heldTokensTask[_taskID] = _amount;
+        heldTokensTask[tasks.push(task(msg.sender, _taskName, 0))] = _amount;
         heldTotal -= _amount;
     }
 
     // function to release held tokens for developers
-    function releaseHeldCoins(address _address_socio, uint _taskID) public {
-        require(address2socio[msg.sender], "Debes ser socio para crear tokens");
-        require(msg.sender!=_address_socio);
+    function releaseHeldCoins(uint _taskID) public {
+        require(address2partner[msg.sender], "Debes ser partner para crear tokens");
+        require(msg.sender!=tasks[_taskID].publisher_partner);
         require(heldTokensTask[_taskID]>0, "No hay suficientes tokens para esta actividad");
         uint256 held = heldTokensTask[_taskID];
         heldTokensTask[_taskID] = 0;
         heldTotal -= held;
-        Token.mintToken(_address_socio, held);
-        emit ReleaseTokens(_address_socio, held);
+        Token.mintToken(tasks[_taskID].publisher_partner, held);
+        task2validators[_taskID].push(msg.sender);
+        task2totalValidatos[_taskID]++;
+        emit ReleaseTokens(tasks[_taskID].publisher_partner, held);
     }
    
     function view_now() public view returns (uint256){
@@ -354,20 +356,29 @@ contract Sale {
         uint256 wei_invested4;
         address owner;
     }
-    struct socio{
+    struct partner{
         address wallet_address;
         string name;
         string doc;
     }
+    struct task{
+        address publisher_partner;
+        string name;
+        uint estado; //01 - Creada no validada, 11 Creada Validada, 10 Creada Rechazada
+    }
     usuario[] public usuarios;
-    socio[] public socios;
+    partner[] public partners;
+    task[] public tasks;
     mapping (address => bool) public address2verificado;
-    mapping (address => bool) public address2socio;
-    function add_socio(address _wallet_socio, string _nombre_socio, string _doc) public {
-        require(address2socio[msg.sender]);
+    mapping (address => bool) public address2partner;
+    mapping (uint => uint) private task2parent;
+    mapping (uint => address[] ) private task2validators;
+    mapping (uint => uint) public task2totalValidatos;
+    function add_partner(address _wallet_partner, string _nombre_partner, string _doc) public {
+        require(address2partner[msg.sender]);
        //require(address2inscrito[_usuario]);
-       socios.push(socio(_wallet_socio,_nombre_socio,_doc));
-        address2socio[_wallet_socio] = true;
+       partners.push(partner(_wallet_partner,_nombre_partner,_doc));
+        address2partner[_wallet_partner] = true;
     }   
     function autorizar(address _usuario) public {
         require(msg.sender == creator);
